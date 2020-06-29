@@ -48,13 +48,13 @@ public:
     const_iterator end() const noexcept;                        // O(1) nothrow
 
     iterator insert(const_iterator pos, T const &);             // O(N) weak
-    iterator erase(const_iterator pos);                         // O(N) weak     :NOTE: deleted non-const overloads
+    iterator erase(const_iterator pos);                         // O(N) weak
     iterator erase(const_iterator first, const_iterator last);  // O(N) weak
 
 private:
     void change_capacity(size_t);                               // O(N) strong
-    static T* copy(vector<T> const &, size_t);                  // O(N) strong   :NOTE: fixed static and iterator
-    static void free_data(T*, size_t);                          // O(N) nothrow  :NOTE: fixed copy-paste and wrong destructors order
+    static T* copy(const T*, size_t, size_t);                   // O(N) strong    :NOTE: updated type vector -> T*
+    static void free_data(T*, size_t);                          // O(N) nothrow
 
     T *data_;
     size_t size_;
@@ -72,12 +72,12 @@ void vector<T>::free_data(T* a, size_t last) {
 }
 
 template<typename T>
-typename vector<T>::iterator vector<T>::copy(vector<T> const &a, size_t new_capacity) {
+typename vector<T>::iterator vector<T>::copy(const T* from, size_t new_size, size_t new_capacity) {
     T *tmp = static_cast<T *>(operator new(new_capacity * sizeof(T)));
     size_t i = 0;
     try {
-        for (; i < a.size_; ++i) {
-            new(tmp + i) T(a[i]);
+        for (; i < new_size; ++i) {
+            new(tmp + i) T(from[i]);
         }
     } catch (...) {
         free_data(tmp, i);
@@ -92,15 +92,8 @@ vector<T>::vector(vector const &other) : vector() {
     if (other.empty()) {
         return;
     }
-    try {
-        data_ = copy(other, other.capacity_);
-    } catch (...) {
-        data_ = nullptr;
-        throw;
-    }
-    size_ = other.size_;
-    capacity_ = other.capacity_;
-    shrink_to_fit();
+    data_ = copy(other.data_, other.size_, other.capacity_);  //  :NOTE: deleted try and changed capacity
+    size_ = capacity_ = other.size_;  //  :NOTE: deleted shrink
 }
 
 template<typename T>
@@ -114,8 +107,7 @@ void vector<T>::swap(vector &other) noexcept {
 template<typename T>
 vector<T> &vector<T>::operator=(vector const &other) {
     vector<T> tmp(other);
-    this->swap(tmp);
-    tmp.shrink_to_fit();
+    this->swap(tmp);  //  :NOTE: deleted shrink
     return *this;
 }
 
@@ -146,7 +138,7 @@ T *vector<T>::data() noexcept {
 }
 
 template<typename T>
-T const *vector<T>::data() const noexcept {  //  :NOTE: deleted cast
+T const *vector<T>::data() const noexcept {
     return data_;
 }
 
@@ -156,7 +148,7 @@ void vector<T>::change_capacity(size_t new_capacity) {
     if (capacity_ == new_capacity) {
         return;
     }
-    T *tmp = copy(*this, new_capacity);  //  :NOTE: deleted try
+    T *tmp = copy(data_, size_, new_capacity);
     capacity_ = new_capacity;
     free_data(data_, size_);
     operator delete(data_);
@@ -187,7 +179,7 @@ void vector<T>::clear() noexcept {
 }
 
 template<typename T>
-T &vector<T>::operator[](size_t i) noexcept {  //  :NOTE: deleted asserts
+T &vector<T>::operator[](size_t i) noexcept {
     return data_[i];
 }
 
@@ -209,7 +201,7 @@ T const &vector<T>::front() const noexcept {
 
 template<typename T>
 T &vector<T>::back() noexcept {
-    return data_[size_ - 1];  //  :NOTE: getters changed to variables
+    return data_[size_ - 1];
 }
 
 template<typename T>
@@ -239,11 +231,13 @@ typename vector<T>::const_iterator vector<T>::end() const noexcept {
 
 template<typename T>
 void vector<T>::push_back(T const &value) {
-    T copy = value;
     if (size_ == capacity_) {
-        change_capacity(capacity_ ? 2 * capacity_ : 1);  // :NOTE: deleted cast
+        T copy = value;  //  :NOTE: fixed redundant copy
+        change_capacity(capacity_ ? 2 * capacity_ : 1);
+        new(data_ + size_) T(copy);  //  :NOTE: fixed getter
+    } else {
+        new(data_ + size_) T(value);
     }
-    new(end()) T(copy);
     ++size_;
 }
 
@@ -254,12 +248,12 @@ void vector<T>::pop_back() noexcept {
 
 template<typename T>
 typename vector<T>::iterator vector<T>::insert(vector::const_iterator pos, T const &value) {
-    ptrdiff_t insertion_point = pos - begin();
+    ptrdiff_t insertion_point = pos - data_;  //  :NOTE: fixed getter
     push_back(value);
     for (ptrdiff_t curr = size_ - 1; curr - 1 >= insertion_point; --curr) {
         std::swap(data_[curr - 1], data_[curr]);
     }
-    return data_ + (pos - data_);
+    return data_ + insertion_point;  //  :NOTE: fixed copy-paste
 }
 
 template<typename T>
@@ -269,12 +263,14 @@ typename vector<T>::iterator vector<T>::erase(vector::const_iterator pos) {
 
 template<typename T>
 typename vector<T>::iterator vector<T>::erase(vector::const_iterator first, vector::const_iterator last) {
-    const ptrdiff_t n_deletions = last - first;
-    for (ptrdiff_t curr = last - data_; curr < size_; ++curr) {
-        std::swap(data_[curr - n_deletions], data_[curr]);
-    }
-    for (ptrdiff_t times = 0; times < n_deletions; ++times) {
-        pop_back();
+    if (last - first > 0) {  //  :NOTE: added checking
+        const ptrdiff_t n_deletions = last - first;
+        for (ptrdiff_t curr = last - data_; curr < size_; ++curr) {
+            std::swap(data_[curr - n_deletions], data_[curr]);
+        }
+        for (ptrdiff_t times = 0; times < n_deletions; ++times) {
+            pop_back();
+        }
     }
     return data_ + (first - data_);
 }
