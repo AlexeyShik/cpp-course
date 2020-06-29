@@ -53,7 +53,7 @@ public:
 
 private:
     void change_capacity(size_t);                               // O(N) strong
-    static T* copy(const T*, size_t, size_t);                   // O(N) strong    :NOTE: updated type vector -> T*
+    static T* copy(const T*, size_t, size_t);                   // O(N) strong
     static void free_data(T*, size_t);                          // O(N) nothrow
 
     T *data_;
@@ -72,7 +72,7 @@ void vector<T>::free_data(T* a, size_t last) {
 }
 
 template<typename T>
-typename vector<T>::iterator vector<T>::copy(const T* from, size_t new_size, size_t new_capacity) {
+T* vector<T>::copy(const T* from, size_t new_size, size_t new_capacity) {
     T *tmp = static_cast<T *>(operator new(new_capacity * sizeof(T)));
     size_t i = 0;
     try {
@@ -92,8 +92,8 @@ vector<T>::vector(vector const &other) : vector() {
     if (other.empty()) {
         return;
     }
-    data_ = copy(other.data_, other.size_, other.capacity_);  //  :NOTE: deleted try and changed capacity
-    size_ = capacity_ = other.size_;  //  :NOTE: deleted shrink
+    data_ = copy(other.data_, other.size_, other.size_);
+    size_ = capacity_ = other.size_;
 }
 
 template<typename T>
@@ -107,7 +107,7 @@ void vector<T>::swap(vector &other) noexcept {
 template<typename T>
 vector<T> &vector<T>::operator=(vector const &other) {
     vector<T> tmp(other);
-    this->swap(tmp);  //  :NOTE: deleted shrink
+    this->swap(tmp);
     return *this;
 }
 
@@ -232,9 +232,9 @@ typename vector<T>::const_iterator vector<T>::end() const noexcept {
 template<typename T>
 void vector<T>::push_back(T const &value) {
     if (size_ == capacity_) {
-        T copy = value;  //  :NOTE: fixed redundant copy
+        T copy = value;
         change_capacity(capacity_ ? 2 * capacity_ : 1);
-        new(data_ + size_) T(copy);  //  :NOTE: fixed getter
+        new(data_ + size_) T(copy);
     } else {
         new(data_ + size_) T(value);
     }
@@ -248,12 +248,12 @@ void vector<T>::pop_back() noexcept {
 
 template<typename T>
 typename vector<T>::iterator vector<T>::insert(vector::const_iterator pos, T const &value) {
-    ptrdiff_t insertion_point = pos - data_;  //  :NOTE: fixed getter
+    ptrdiff_t insertion_point = pos - data_;
     push_back(value);
     for (ptrdiff_t curr = size_ - 1; curr - 1 >= insertion_point; --curr) {
         std::swap(data_[curr - 1], data_[curr]);
     }
-    return data_ + insertion_point;  //  :NOTE: fixed copy-paste
+    return data_ + insertion_point;
 }
 
 template<typename T>
@@ -263,7 +263,7 @@ typename vector<T>::iterator vector<T>::erase(vector::const_iterator pos) {
 
 template<typename T>
 typename vector<T>::iterator vector<T>::erase(vector::const_iterator first, vector::const_iterator last) {
-    if (last - first > 0) {  //  :NOTE: added checking
+    if (last - first > 0) {
         const ptrdiff_t n_deletions = last - first;
         for (ptrdiff_t curr = last - data_; curr < size_; ++curr) {
             std::swap(data_[curr - n_deletions], data_[curr]);
