@@ -47,20 +47,15 @@ public:
     const_iterator begin() const noexcept;                      // O(1) nothrow
     const_iterator end() const noexcept;                        // O(1) nothrow
 
-    iterator insert(iterator pos, T const &);                   // O(N) weak
     iterator insert(const_iterator pos, T const &);             // O(N) weak
-
-    iterator erase(iterator pos);                               // O(N) weak
-    iterator erase(const_iterator pos);                         // O(N) weak
-
-    iterator erase(iterator first, iterator last);              // O(N) weak
+    iterator erase(const_iterator pos);                         // O(N) weak     :NOTE: deleted non-const overloads
     iterator erase(const_iterator first, const_iterator last);  // O(N) weak
 
 private:
     void change_capacity(size_t);                               // O(N) strong
-    iterator copy(vector<T> const &);                           // O(N) strong
+    static T* copy(vector<T> const &, size_t);                  // O(N) strong   :NOTE: fixed static and iterator
+    static void free_data(T*, size_t);                          // O(N) nothrow  :NOTE: fixed copy-paste and wrong destructors order
 
-private:
     T *data_;
     size_t size_;
     size_t capacity_;
@@ -70,17 +65,22 @@ template<typename T>
 vector<T>::vector() noexcept :  data_(nullptr), size_(0), capacity_(0) {}
 
 template<typename T>
-typename vector<T>::iterator vector<T>::copy(vector<T> const &a) {
-    T *tmp = static_cast<T *>(operator new(a.capacity() * sizeof(T)));
+void vector<T>::free_data(T* a, size_t last) {
+    for (ptrdiff_t j = last - 1; j >= 0; --j) {
+        a[j].~T();
+    }
+}
+
+template<typename T>
+typename vector<T>::iterator vector<T>::copy(vector<T> const &a, size_t new_capacity) {
+    T *tmp = static_cast<T *>(operator new(new_capacity * sizeof(T)));
     size_t i = 0;
     try {
-        for (; i < a.size(); ++i) {
+        for (; i < a.size_; ++i) {
             new(tmp + i) T(a[i]);
         }
     } catch (...) {
-        while (i) {
-            tmp[--i].~T();
-        }
+        free_data(tmp, i);
         operator delete(tmp);
         throw;
     }
@@ -93,13 +93,13 @@ vector<T>::vector(vector const &other) : vector() {
         return;
     }
     try {
-        data_ = copy(other);
+        data_ = copy(other, other.capacity_);
     } catch (...) {
         data_ = nullptr;
         throw;
     }
-    size_ = other.size();
-    capacity_ = other.capacity();
+    size_ = other.size_;
+    capacity_ = other.capacity_;
     shrink_to_fit();
 }
 
@@ -122,7 +122,7 @@ vector<T> &vector<T>::operator=(vector const &other) {
 template<typename T>
 vector<T>::~vector() noexcept {
     clear();
-    operator delete(data());
+    operator delete(data_);
 }
 
 template<typename T>
@@ -146,33 +146,26 @@ T *vector<T>::data() noexcept {
 }
 
 template<typename T>
-T const *vector<T>::data() const noexcept {
-    return static_cast<T const *> (data_);
+T const *vector<T>::data() const noexcept {  //  :NOTE: deleted cast
+    return data_;
 }
 
 template<typename T>
 void vector<T>::change_capacity(size_t new_capacity) {
-    assert(new_capacity >= size());
-    if (capacity() == new_capacity) {
+    assert(new_capacity >= size_);
+    if (capacity_ == new_capacity) {
         return;
     }
+    T *tmp = copy(*this, new_capacity);  //  :NOTE: deleted try
     capacity_ = new_capacity;
-    T *tmp;
-    try {
-        tmp = copy(*this);
-    } catch (...) {
-        throw;
-    }
-    for (size_t j = 0; j < size(); ++j) {
-        data_[j].~T();
-    }
+    free_data(data_, size_);
     operator delete(data_);
     data_ = tmp;
 }
 
 template<typename T>
 void vector<T>::reserve(size_t new_capacity) {
-    if (new_capacity > capacity()) {
+    if (new_capacity > capacity_) {
         change_capacity(new_capacity);
     }
 }
@@ -180,7 +173,7 @@ void vector<T>::reserve(size_t new_capacity) {
 template<typename T>
 void vector<T>::shrink_to_fit() {
     if (!empty()) {
-        change_capacity(size());
+        change_capacity(size_);
     } else {
         operator delete(data_);
         data_ = nullptr;
@@ -189,73 +182,66 @@ void vector<T>::shrink_to_fit() {
 
 template<typename T>
 void vector<T>::clear() noexcept {
-    while (size()) {
-        pop_back();
-    }
+    free_data(data_, size_);
+    size_ = 0;
 }
 
 template<typename T>
-T &vector<T>::operator[](size_t i) noexcept {
-    assert(i >= 0 && i < size());
+T &vector<T>::operator[](size_t i) noexcept {  //  :NOTE: deleted asserts
     return data_[i];
 }
 
 template<typename T>
 T const &vector<T>::operator[](size_t i) const noexcept {
-    assert(i >= 0 && i < size());
     return data_[i];
 }
 
 template<typename T>
 T &vector<T>::front() noexcept {
-    assert(!empty());
     return data_[0];
 }
 
 template<typename T>
 T const &vector<T>::front() const noexcept {
-    assert(!empty());
     return data_[0];
 }
 
 
 template<typename T>
 T &vector<T>::back() noexcept {
-    assert(!empty());
-    return data_[size() - 1];
+    return data_[size_ - 1];  //  :NOTE: getters changed to variables
 }
 
 template<typename T>
 T const &vector<T>::back() const noexcept {
-    assert(!empty());
-    return data_[size() - 1];
+    return data_[size_ - 1];
 }
 
 template<typename T>
 typename vector<T>::iterator vector<T>::begin() noexcept {
-    return data();
+    return data_;
 }
 
 template<typename T>
 typename vector<T>::const_iterator vector<T>::begin() const noexcept {
-    return data();
+    return data_;
 }
 
 template<typename T>
 typename vector<T>::iterator vector<T>::end() noexcept {
-    return data() + size();
+    return data_ + size_;
 }
 
 template<typename T>
 typename vector<T>::const_iterator vector<T>::end() const noexcept {
-    return data() + size();
+    return data_ + size_;
 }
 
 template<typename T>
 void vector<T>::push_back(T const &value) {
     T copy = value;
-    if (size() == capacity()) {
-        change_capacity(capacity() ? 2 * capacity() : static_cast<size_t>(1));
+    if (size_ == capacity_) {
+        change_capacity(capacity_ ? 2 * capacity_ : 1);  // :NOTE: deleted cast
     }
     new(end()) T(copy);
     ++size_;
@@ -263,29 +249,17 @@ void vector<T>::push_back(T const &value) {
 
 template<typename T>
 void vector<T>::pop_back() noexcept {
-    assert(size() > 0);
     data_[--size_].~T();
 }
 
 template<typename T>
-typename vector<T>::iterator vector<T>::insert(vector::iterator pos, T const &value) {
-    return insert(static_cast<T const *>(pos), value);
-}
-
-template<typename T>
 typename vector<T>::iterator vector<T>::insert(vector::const_iterator pos, T const &value) {
-    assert(pos >= begin() && pos <= end());
     ptrdiff_t insertion_point = pos - begin();
     push_back(value);
-    for (ptrdiff_t curr = size() - 1; curr - 1 >= insertion_point; --curr) {
+    for (ptrdiff_t curr = size_ - 1; curr - 1 >= insertion_point; --curr) {
         std::swap(data_[curr - 1], data_[curr]);
     }
-    return data() + (pos - data());
-}
-
-template<typename T>
-typename vector<T>::iterator vector<T>::erase(vector::iterator pos) {
-    return erase(static_cast<T const *>(pos));
+    return data_ + (pos - data_);
 }
 
 template<typename T>
@@ -294,21 +268,15 @@ typename vector<T>::iterator vector<T>::erase(vector::const_iterator pos) {
 }
 
 template<typename T>
-typename vector<T>::iterator vector<T>::erase(vector::iterator first, vector::iterator last) {
-    return erase(static_cast<T const *>(first), static_cast<T const *>(last));
-}
-
-template<typename T>
 typename vector<T>::iterator vector<T>::erase(vector::const_iterator first, vector::const_iterator last) {
-    assert(first >= begin() && first <= last && last <= end() && last - first <= size());
     const ptrdiff_t n_deletions = last - first;
-    for (ptrdiff_t curr = last - data(); curr < size(); ++curr) {
+    for (ptrdiff_t curr = last - data_; curr < size_; ++curr) {
         std::swap(data_[curr - n_deletions], data_[curr]);
     }
     for (ptrdiff_t times = 0; times < n_deletions; ++times) {
         pop_back();
     }
-    return data() + (first - data());
+    return data_ + (first - data_);
 }
 
 #define MY_VECTOR_MY_VECTOR_H
