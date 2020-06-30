@@ -3,14 +3,22 @@
                 global          _start
 _start:
 
-                sub             rsp, 2 * 128 * 8
-                lea             rdi, [rsp + 128 * 8]
+                sub             rsp, 6 * 128 * 8
                 mov             rcx, 128
+                lea             rdi, [rsp]
                 call            read_long
-                mov             rdi, rsp
+                lea             rdi, [rsp + 128 * 8]
                 call            read_long
-                lea             rsi, [rsp + 128 * 8]
+                lea             rsi, [rsp]
+
+                lea             r9, [rsp + 4 * 128 * 8]
+                lea             r10, [rsp + 2 * 128 * 8]
+
                 call            mul_long_long
+                add             rsp, 4 * 128 * 8
+
+                mov             rcx, 256
+                call            write_long
 
                 mov             al, 0x0a
                 call            write_char
@@ -31,10 +39,6 @@ mul_long_long:
                 ; r8 - сколько разрядов числа осталось просмотреть и прибавить в ответ
                 mov             rcx, 256
                 clc
-
-                sub             rsp, 4 * 128 * 8
-                mov             r9, rsp
-                lea             r10, [rsp + 2 * 128 * 8]
 
                 push            rdi
                 mov             rdi, r9
@@ -78,7 +82,6 @@ mul_long_long:
                 ; все qwords обработали
 
                 mov             rdi, r9
-                call            write_long
                 pop             rcx
                 pop             rsi
                 ret
