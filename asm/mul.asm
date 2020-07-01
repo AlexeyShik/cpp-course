@@ -11,11 +11,11 @@ _start:
                 call            read_long
                 lea             rsi, [rsp]
 
-                lea             rbx, [rsp + 2 * 128 * 8]
+                lea             r9, [rsp + 2 * 128 * 8]
                 call            mul_long_long
 
                 mov             rcx, 256
-                mov             rdi, rbx
+                mov             rdi, r9
                 call            write_long
 
                 mov             al, 0x0a
@@ -27,9 +27,9 @@ _start:
 ;    rdi -- address of operand #1 (long number)
 ;    rsi -- address of operand #2 (long number)
 ;    rcx -- length of long numbers in qwords
-;    rbx -- address of result
+;    r9 -- address of result
 ; result:
-;    multiply is written to rbx
+;    multiply is written to r9
 ; идейно в десятичной ССЧ оно работает так: 257 * 32 = ((0 * 10 + 2 * 32) * 10 + 5 * 32) * 10 + 7 * 32
 mul_long_long:
                 push            rsi
@@ -40,20 +40,20 @@ mul_long_long:
                 clc
 
                 sub             rsp, 2 * 128 * 8
-                mov             r10, rsp
+                lea             r10, [rsp]
 
                 push            rdi
-                mov             rdi, rbx
+                mov             rdi, r9
                 call            set_zero
                 pop             rdi
-                ; в rbx хранится ответ, изначально нули, r10 доп память под слагаемое
+                ; в r9 хранится ответ, изначально нули, r10 доп память под слагаемое
                 lea             rdi, [rdi + 8 * (r8 - 1)]
                 ; последний qword длинного числа
 .loop:
                 mov             rbx, 4*1024*1024*1024
                 ; размер dword
                 push            rdi
-                mov             rdi, rbx
+                mov             rdi, r9
                 call            mul_long_short
                 call            mul_long_short
                 pop             rdi
@@ -73,7 +73,7 @@ mul_long_long:
                 mov             r10, rdi
                 ; в r10 записали новое слагаемое
                 push            rsi
-                mov             rdi, rbx
+                mov             rdi, r9
                 mov             rsi, r10
                 call            add_long_long
                 pop             rsi
@@ -83,6 +83,7 @@ mul_long_long:
                 jnz             .loop
                 ; все qwords обработали
 
+                add             rsp, 2 * 128 * 8
                 pop             rcx
                 pop             rsi
                 ret
