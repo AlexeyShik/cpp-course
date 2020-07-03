@@ -15,7 +15,7 @@ private:
 private:
     static const uint64_t BASE = static_cast<uint64_t>(UINT32_MAX) + 1;
     using uint128_t = unsigned __int128;
-    using func = std::function<uint32_t(uint32_t, __uint32_t)>;
+    using func = std::function<uint32_t(uint32_t, uint32_t)>;
 
     ///  @methods
 public:
