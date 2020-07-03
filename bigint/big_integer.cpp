@@ -198,7 +198,7 @@ big_integer &big_integer::operator/=(const big_integer &rhs) {
     if (size() < rhs.size()) {
         return *this = 0;
     } else if (rhs.size() == 1) {
-        const auto ans = big_integer::short_div(*this, static_cast<uint32_t>(rhs[0]));
+        const auto ans = big_integer::short_div(*this, rhs[0]);
         return *this = rhs.sign ? -ans.first : ans.first;
     } else if (!rhs.sign && rhs.count() == 1) {
         return *this >>= rhs.clear_log2();
