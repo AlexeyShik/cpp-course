@@ -8,7 +8,7 @@
 struct optimized_storage {
     /// @consts
 private:
-    static const size_t MAX_STATIC_SIZE = 32;
+    static constexpr size_t MAX_STATIC_SIZE = sizeof(shared_vector*) / sizeof(uint32_t);  ///  optimal size
 
     ///  @variables
 private:
