@@ -8,12 +8,12 @@
 struct optimized_storage {
     /// @consts
 private:
-    static constexpr size_t MAX_STATIC_SIZE = sizeof(shared_vector*) / sizeof(uint32_t);  ///  optimal size
+    static constexpr size_t MAX_STATIC_SIZE = sizeof(shared_vector *) / sizeof(uint32_t);  ///  optimal size
 
     ///  @variables
 private:
     union {
-        shared_vector* ptr;  ///  dynamic storage
+        shared_vector *ptr;  ///  dynamic storage
         std::array<uint32_t, MAX_STATIC_SIZE> static_data;  /// static storage
     };
 
@@ -49,6 +49,10 @@ private:
     void set_size(size_t new_size);  ///  updates size_ and small
 
     void fill_static_from_other_dynamic(const optimized_storage &other);  /// trying to avoid allocating dynamic memory
+
+    void make_unshared();  ///  if *this shares data, then makes data unique
+
+    void swap(optimized_storage &other);
 };
 
 bool operator==(const optimized_storage &a, const optimized_storage &b);
