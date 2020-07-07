@@ -6,14 +6,18 @@ set(CMAKE_CXX_STANDARD 11)
 include_directories(${BIGINT_SOURCE_DIR})
 
 add_executable(big_integer_testing
-               big_integer_testing.cpp
-               big_integer.h
-               big_integer.cpp
-               gtest/gtest-all.cc
-               gtest/gtest.h
-               gtest/gtest_main.cc 
-               big_integer_gmp.cpp 
-               big_integer_gmp.h)
+        big_integer_testing.cpp
+        big_integer.h
+        big_integer.cpp
+        shared_vector.h
+        shared_vector.cpp
+        optimized_storage.h
+        optimized_storage.cpp
+        gtest/gtest-all.cc
+        gtest/gtest.h
+        gtest/gtest_main.cc
+        big_integer_gmp.cpp
+        big_integer_gmp.h)
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic")
